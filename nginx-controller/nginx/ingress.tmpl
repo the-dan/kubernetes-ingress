@@ -25,9 +25,11 @@ server {
 	{{range $proxyPassHeader := $server.ProxyPassHeaders}}
 	proxy_pass_header {{$proxyPassHeader}};{{end}}
 	{{if $server.SSL}}
+		{{if not $server.ProxySslNoForceRedirect}}
 	if ($scheme = http) {
 		return 301 https://$host$request_uri;
 	}
+		{{end}}
 	{{- if $server.HSTS}}
 	proxy_hide_header Strict-Transport-Security;
 	add_header Strict-Transport-Security "max-age={{$server.HSTSMaxAge}}; {{if $server.HSTSIncludeSubdomains}}includeSubDomains; {{end}}preload" always;{{end}}

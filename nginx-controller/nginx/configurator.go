@@ -117,6 +117,7 @@ func (cnf *Configurator) generateNginxCfg(ingEx *IngressEx, pems map[string]stri
 			RealIPHeader:          ingCfg.RealIPHeader,
 			SetRealIPFrom:         ingCfg.SetRealIPFrom,
 			RealIPRecursive:       ingCfg.RealIPRecursive,
+			ProxySslNoForceRedirect: ingCfg.ProxySslNoForceRedirect,
 			ProxyHideHeaders:      ingCfg.ProxyHideHeaders,
 			ProxyPassHeaders:      ingCfg.ProxyPassHeaders,
 		}
@@ -169,6 +170,7 @@ func (cnf *Configurator) generateNginxCfg(ingEx *IngressEx, pems map[string]stri
 			RealIPRecursive:       ingCfg.RealIPRecursive,
 			ProxyHideHeaders:      ingCfg.ProxyHideHeaders,
 			ProxyPassHeaders:      ingCfg.ProxyPassHeaders,
+			ProxySslNoForceRedirect: ingCfg.ProxySslNoForceRedirect,
 		}
 
 		if pemFile, ok := pems[emptyHost]; ok {
@@ -228,6 +230,15 @@ func (cnf *Configurator) createConfig(ingEx *IngressEx) Config {
 			glog.Error(err)
 		} else {
 			ingCfg.ProxyBuffering = proxyBuffering
+		}
+	}
+
+	ingCfg.ProxySslNoForceRedirect = false
+	if sslNoForceRedirect, exists, err := GetMapKeyAsBool(ingEx.Ingress.Annotations, "nginx.org/proxy-ssl-no-force-redirect", ingEx.Ingress); exists {
+		if err != nil {
+			glog.Error(err)
+		} else {
+			ingCfg.ProxySslNoForceRedirect = sslNoForceRedirect
 		}
 	}
 
