@@ -17,6 +17,7 @@ type Config struct {
 	ProxyHideHeaders              []string
 	ProxyPassHeaders              []string
 	ProxySslNoForceRedirect       bool
+	GenerateRandomHostname		  bool
 	HSTS                          bool
 	HSTSMaxAge                    int64
 	HSTSIncludeSubdomains         bool

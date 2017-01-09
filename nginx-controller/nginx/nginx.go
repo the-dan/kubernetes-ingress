@@ -17,6 +17,7 @@ const dhparamFilename = "dhparam.pem"
 type NginxController struct {
 	nginxConfdPath string
 	nginxCertsPath string
+	nginxConfPath  string
 	local          bool
 }
 
@@ -104,6 +105,7 @@ func NewNginxController(nginxConfPath string, local bool, healthStatus bool) (*N
 	ngxc := NginxController{
 		nginxConfdPath: path.Join(nginxConfPath, "conf.d"),
 		nginxCertsPath: path.Join(nginxConfPath, "ssl"),
+		nginxConfPath : nginxConfPath,
 		local:          local,
 	}
 
@@ -282,7 +284,7 @@ func (nginx *NginxController) UpdateMainConfigFile(cfg *NginxMainConfig) {
 		glog.Fatalf("Failed to parse the main config template file: %v", err)
 	}
 
-	filename := "/etc/nginx/nginx.conf"
+	filename := path.Join(nginx.nginxConfPath, "nginx.conf")
 	glog.V(3).Infof("Writing NGINX conf to %v", filename)
 
 	if glog.V(3) {

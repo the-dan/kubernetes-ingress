@@ -79,6 +79,7 @@ func (cnf *Configurator) updateCertificates(ingEx *IngressEx) map[string]string 
 
 	return pems
 }
+
 func (cnf *Configurator) generateNginxCfg(ingEx *IngressEx, pems map[string]string) IngressNginxConfig {
 	ingCfg := cnf.createConfig(ingEx)
 
@@ -108,18 +109,18 @@ func (cnf *Configurator) generateNginxCfg(ingEx *IngressEx, pems map[string]stri
 		}
 
 		server := Server{
-			Name:                  serverName,
-			HTTP2:                 ingCfg.HTTP2,
-			ProxyProtocol:         ingCfg.ProxyProtocol,
-			HSTS:                  ingCfg.HSTS,
-			HSTSMaxAge:            ingCfg.HSTSMaxAge,
-			HSTSIncludeSubdomains: ingCfg.HSTSIncludeSubdomains,
-			RealIPHeader:          ingCfg.RealIPHeader,
-			SetRealIPFrom:         ingCfg.SetRealIPFrom,
-			RealIPRecursive:       ingCfg.RealIPRecursive,
+			Name:                    serverName,
+			HTTP2:                   ingCfg.HTTP2,
+			ProxyProtocol:           ingCfg.ProxyProtocol,
+			HSTS:                    ingCfg.HSTS,
+			HSTSMaxAge:              ingCfg.HSTSMaxAge,
+			HSTSIncludeSubdomains:   ingCfg.HSTSIncludeSubdomains,
+			RealIPHeader:            ingCfg.RealIPHeader,
+			SetRealIPFrom:           ingCfg.SetRealIPFrom,
+			RealIPRecursive:         ingCfg.RealIPRecursive,
 			ProxySslNoForceRedirect: ingCfg.ProxySslNoForceRedirect,
-			ProxyHideHeaders:      ingCfg.ProxyHideHeaders,
-			ProxyPassHeaders:      ingCfg.ProxyPassHeaders,
+			ProxyHideHeaders:        ingCfg.ProxyHideHeaders,
+			ProxyPassHeaders:        ingCfg.ProxyPassHeaders,
 		}
 
 		if pemFile, ok := pems[serverName]; ok {
@@ -155,21 +156,28 @@ func (cnf *Configurator) generateNginxCfg(ingEx *IngressEx, pems map[string]stri
 
 		server.Locations = locations
 		servers = append(servers, server)
+
+
+		if ingCfg.GenerateRandomHostname {
+			randomNamedServer := server
+			randomNamedServer.Name = RandomNameGenerator.GenerateName(server.Name)
+			servers = append(servers, randomNamedServer)
+		}
 	}
 
 	if len(ingEx.Ingress.Spec.Rules) == 0 && ingEx.Ingress.Spec.Backend != nil {
 		server := Server{
-			Name:                  emptyHost,
-			HTTP2:                 ingCfg.HTTP2,
-			ProxyProtocol:         ingCfg.ProxyProtocol,
-			HSTS:                  ingCfg.HSTS,
-			HSTSMaxAge:            ingCfg.HSTSMaxAge,
-			HSTSIncludeSubdomains: ingCfg.HSTSIncludeSubdomains,
-			RealIPHeader:          ingCfg.RealIPHeader,
-			SetRealIPFrom:         ingCfg.SetRealIPFrom,
-			RealIPRecursive:       ingCfg.RealIPRecursive,
-			ProxyHideHeaders:      ingCfg.ProxyHideHeaders,
-			ProxyPassHeaders:      ingCfg.ProxyPassHeaders,
+			Name:                    emptyHost,
+			HTTP2:                   ingCfg.HTTP2,
+			ProxyProtocol:           ingCfg.ProxyProtocol,
+			HSTS:                    ingCfg.HSTS,
+			HSTSMaxAge:              ingCfg.HSTSMaxAge,
+			HSTSIncludeSubdomains:   ingCfg.HSTSIncludeSubdomains,
+			RealIPHeader:            ingCfg.RealIPHeader,
+			SetRealIPFrom:           ingCfg.SetRealIPFrom,
+			RealIPRecursive:         ingCfg.RealIPRecursive,
+			ProxyHideHeaders:        ingCfg.ProxyHideHeaders,
+			ProxyPassHeaders:        ingCfg.ProxyPassHeaders,
 			ProxySslNoForceRedirect: ingCfg.ProxySslNoForceRedirect,
 		}
 
@@ -239,6 +247,15 @@ func (cnf *Configurator) createConfig(ingEx *IngressEx) Config {
 			glog.Error(err)
 		} else {
 			ingCfg.ProxySslNoForceRedirect = sslNoForceRedirect
+		}
+	}
+
+	ingCfg.GenerateRandomHostname = false
+	if doGenerateRandomHost, exists, err := GetMapKeyAsBool(ingEx.Ingress.Annotations, "nginx.org/generate-random-name", ingEx.Ingress); exists {
+		if err != nil {
+			glog.Error(err)
+		} else {
+			ingCfg.GenerateRandomHostname = doGenerateRandomHost
 		}
 	}
 
