@@ -17,13 +17,15 @@ type Configurator struct {
 	nginx  *NginxController
 	config *Config
 	lock   sync.Mutex
+	hostRegistry *HostRegistry
 }
 
 // NewConfigurator creates a new Configurator
-func NewConfigurator(nginx *NginxController, config *Config) *Configurator {
+func NewConfigurator(nginx *NginxController, config *Config, hr *HostRegistry) *Configurator {
 	cnf := Configurator{
 		nginx:  nginx,
 		config: config,
+		hostRegistry : hr,
 	}
 
 	return &cnf
@@ -78,6 +80,26 @@ func (cnf *Configurator) updateCertificates(ingEx *IngressEx) map[string]string 
 	}
 
 	return pems
+}
+
+func (cnf *Configurator) getRandomName(serverName string) (randomName string, err error) {
+	if cnf.hostRegistry == nil {
+		return RandomNameGenerator.GenerateName(serverName), nil
+	}
+	rn, err, exists := cnf.hostRegistry.GetRandomNameIfRegistered(serverName)
+	if err != nil {
+		return "", err
+	}
+
+	if !exists {
+		rn = RandomNameGenerator.GenerateName(serverName)
+		err = cnf.hostRegistry.Register(rn, serverName)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return rn, nil
 }
 
 func (cnf *Configurator) generateNginxCfg(ingEx *IngressEx, pems map[string]string) IngressNginxConfig {
@@ -160,8 +182,11 @@ func (cnf *Configurator) generateNginxCfg(ingEx *IngressEx, pems map[string]stri
 
 		if ingCfg.GenerateRandomHostname {
 			randomNamedServer := server
-			randomNamedServer.Name = RandomNameGenerator.GenerateName(server.Name)
-			servers = append(servers, randomNamedServer)
+			randomName, err := cnf.getRandomName(server.Name)
+			if err == nil {
+				randomNamedServer.Name = randomName
+				servers = append(servers, randomNamedServer)
+			}
 		}
 	}
 

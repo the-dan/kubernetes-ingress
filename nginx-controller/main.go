@@ -33,6 +33,9 @@ var (
 	nginxConfigMaps = flag.String("nginx-configmaps", "",
 		`Specifies a configmaps resource that can be used to customize NGINX
 		configuration. The value must follow the following format: <namespace>/<name>`)
+
+	etcdNodes = flag.String("etcd-nodes", "",
+		`Specified comma-delimited list of etcd key-value API URLs`)
 )
 
 func main() {
@@ -56,10 +59,16 @@ func main() {
 		}
 	}
 
+	hostRegistry, err := controller.NewHostRegistry(etcdNodes)
+	if err != nil {
+		glog.Infof("Failed to create etcd client. Using transient random domain names %v", err)
+	}
+
+
 	ngxc, _ := nginx.NewNginxController("/etc/nginx/", local, *healthStatus)
 	ngxc.Start()
 	config := nginx.NewDefaultConfig()
-	cnf := nginx.NewConfigurator(ngxc, config)
+	cnf := nginx.NewConfigurator(ngxc, config, hostRegistry)
 	lbc, _ := controller.NewLoadBalancerController(kubeClient, 30*time.Second, *watchNamespace, cnf, *nginxConfigMaps)
 	lbc.Run()
 }

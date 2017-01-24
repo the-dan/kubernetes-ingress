@@ -74,9 +74,15 @@ func TestRandomGeneratedNames(t *testing.T) {
     if err != nil {
         t.FailNow()
     }
+
+    hostRegistry, err := NewHostRegistry("http://127.0.0.1:2379")
+    if err != nil {
+        t.FailNow()
+    }
+
     config := NewDefaultConfig()
     config.GenerateRandomHostname = true
-    configurator := NewConfigurator(nginxController, config)
+    configurator := NewConfigurator(nginxController, config, hostRegistry)
 
 
     
@@ -102,13 +108,3 @@ func TestRandomGeneratedNames(t *testing.T) {
     fmt.Print(ingressConfig)
 }
 
-
-func TestRandom(t *testing.T) {
-	s1 := S{Name : "test1"}
-	s2 := s1
-
-	s2.Name = "test2"
-	fmt.Print(s1)
-	fmt.Print(s2)
-	fmt.Print(RandStringBytesMaskImpr(10))
-}
