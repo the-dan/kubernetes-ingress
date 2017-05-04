@@ -6,7 +6,7 @@ import (
 )
 
 func TestRegistry(t *testing.T) {
-	hr, err := NewHostRegistry("http://127.0.0.1:2379")
+	hr, err := NewMockHostRegistry()
 	if err != nil {
 		t.FailNow()
 	}

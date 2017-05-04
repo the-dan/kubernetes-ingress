@@ -17,11 +17,11 @@ type Configurator struct {
 	nginx  *NginxController
 	config *Config
 	lock   sync.Mutex
-	hostRegistry *HostRegistry
+	hostRegistry HostRegistry
 }
 
 // NewConfigurator creates a new Configurator
-func NewConfigurator(nginx *NginxController, config *Config, hr *HostRegistry) *Configurator {
+func NewConfigurator(nginx *NginxController, config *Config, hr HostRegistry) *Configurator {
 	cnf := Configurator{
 		nginx:  nginx,
 		config: config,

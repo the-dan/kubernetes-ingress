@@ -11,11 +11,16 @@ import (
     "github.com/coreos/etcd/client"
 )
 
-type HostRegistry struct {
+type HostRegistry interface {
+    GetRandomNameIfRegistered(string) (string, error, bool)
+    Register(string, string) (error)
+}
+
+type EtcdHostRegistry struct {
 	etcdClient client.Client
 }
 
-func NewHostRegistry(endpoints string) (hr *HostRegistry, err error) {
+func NewHostRegistry(endpoints string) (hr HostRegistry, err error) {
     if endpoints == "" {
         return nil, errors.New("No endpoints specified")
     }
@@ -35,11 +40,11 @@ func NewHostRegistry(endpoints string) (hr *HostRegistry, err error) {
         return nil, err
     }
     
-    hr = &HostRegistry{etcdClient : client}
+    hr = &EtcdHostRegistry{etcdClient : client}
     return hr, err
 }
 
-func (hr *HostRegistry) GetRandomNameIfRegistered(hostname string) (randomName string, err error, exists bool) {
+func (hr *EtcdHostRegistry) GetRandomNameIfRegistered(hostname string) (randomName string, err error, exists bool) {
 	kapi := client.NewKeysAPI(hr.etcdClient)
 
 	// TODO: escape hostname, it might contain "/"
@@ -62,7 +67,7 @@ func (hr *HostRegistry) GetRandomNameIfRegistered(hostname string) (randomName s
 	}
 }
 
-func (hr *HostRegistry) Register(randomName, hostname string) (err error) {
+func (hr *EtcdHostRegistry) Register(randomName, hostname string) (err error) {
 
     kapi := client.NewKeysAPI(hr.etcdClient)
     // TODO: normalize hostname

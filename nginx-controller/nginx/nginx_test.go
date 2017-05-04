@@ -70,12 +70,15 @@ func TestRandomGeneratedNames(t *testing.T) {
     nginxConfPath := "."
     local := false
     healthStatus := false
-    nginxController, err := NewNginxController(nginxConfPath, local, healthStatus)
+    outOfCluster := true
+    nginxBinaryPath := "./nginx-mock"
+
+    nginxController, err := NewNginxController(nginxConfPath, local, healthStatus, outOfCluster, nginxBinaryPath)
     if err != nil {
         t.FailNow()
     }
 
-    hostRegistry, err := NewHostRegistry("http://127.0.0.1:2379")
+    hostRegistry, err := NewMockHostRegistry()
     if err != nil {
         t.FailNow()
     }
