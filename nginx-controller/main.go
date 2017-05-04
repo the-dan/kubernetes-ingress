@@ -10,6 +10,7 @@ import (
 	"github.com/nginxinc/kubernetes-ingress/nginx-controller/nginx"
 	"k8s.io/kubernetes/pkg/api"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
+
 )
 
 var (
@@ -36,6 +37,19 @@ var (
 
 	etcdNodes = flag.String("etcd-nodes", "",
 		`Specified comma-delimited list of etcd key-value API URLs`)
+
+	outOfCluster = flag.Bool("out-of-cluster", false, 
+		`If present, assume the controller lives outside of kubernetes cluster.
+		Control over nginx are on {initv,systemd,upstart} shoulders.
+		We just generate config and tell nginx to reload it.
+		Kubernetes API must be accessible.
+		Also pod IPs must be routeable from the controller`)
+
+	nginxBinaryPath = flag.String("nginx-binary", "nginx",
+		`Path to nginx binary to start, reload and test configs`)
+
+	nginxConfPath = flag.String("nginx-conf", "/etc/nginx",
+		`Path to nginx config directory`)
 )
 
 func main() {
@@ -50,7 +64,7 @@ func main() {
 		kubeClient = client.NewOrDie(&client.Config{
 			Host: *proxyURL,
 		})
-		local = true
+		local = false
 	} else {
 		var err error
 		kubeClient, err = client.NewInCluster()
@@ -59,13 +73,13 @@ func main() {
 		}
 	}
 
-	hostRegistry, err := controller.NewHostRegistry(etcdNodes)
+	hostRegistry, err := nginx.NewHostRegistry(*etcdNodes)
 	if err != nil {
 		glog.Infof("Failed to create etcd client. Using transient random domain names %v", err)
 	}
 
 
-	ngxc, _ := nginx.NewNginxController("/etc/nginx/", local, *healthStatus)
+	ngxc, _ := nginx.NewNginxController(*nginxConfPath, local, *healthStatus, *outOfCluster, *nginxBinaryPath)
 	ngxc.Start()
 	config := nginx.NewDefaultConfig()
 	cnf := nginx.NewConfigurator(ngxc, config, hostRegistry)

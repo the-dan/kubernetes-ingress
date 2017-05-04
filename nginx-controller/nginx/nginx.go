@@ -19,6 +19,8 @@ type NginxController struct {
 	nginxCertsPath string
 	nginxConfPath  string
 	local          bool
+	outOfCluster   bool
+	nginxBinaryPath string
 }
 
 // IngressNginxConfig describes an NGINX configuration
@@ -101,12 +103,14 @@ func NewUpstreamWithDefaultServer(name string) Upstream {
 }
 
 // NewNginxController creates a NGINX controller
-func NewNginxController(nginxConfPath string, local bool, healthStatus bool) (*NginxController, error) {
+func NewNginxController(nginxConfPath string, local bool, healthStatus bool, outOfCluster bool, nginxBinaryPath string) (*NginxController, error) {
 	ngxc := NginxController{
 		nginxConfdPath: path.Join(nginxConfPath, "conf.d"),
 		nginxCertsPath: path.Join(nginxConfPath, "ssl"),
 		nginxConfPath : nginxConfPath,
 		local:          local,
+		outOfCluster:	outOfCluster,
+		nginxBinaryPath: nginxBinaryPath,
 	}
 
 	if !local {
@@ -225,10 +229,12 @@ func (nginx *NginxController) templateIt(config IngressNginxConfig, filename str
 // Reload reloads NGINX
 func (nginx *NginxController) Reload() error {
 	if !nginx.local {
-		if err := shellOut("nginx -t"); err != nil {
+		cmd := fmt.Sprintf("%s -t", nginx.nginxBinaryPath)
+		if err := shellOut(cmd); err != nil {
 			return fmt.Errorf("Invalid nginx configuration detected, not reloading: %s", err)
 		}
-		if err := shellOut("nginx -s reload"); err != nil {
+		cmd = fmt.Sprintf("%s -s reload", nginx.nginxBinaryPath)
+		if err := shellOut(cmd); err != nil {
 			return fmt.Errorf("Reloading NGINX failed: %s", err)
 		}
 	} else {
@@ -239,10 +245,15 @@ func (nginx *NginxController) Reload() error {
 
 // Start starts NGINX
 func (nginx *NginxController) Start() {
+	if nginx.outOfCluster {
+		glog.V(3).Info("Out-of-cluster mode enabled. Assuming nginx is running")
+		return;
+	}
+
 	if !nginx.local {
-		if err := shellOut("nginx"); err != nil {
+		if err := shellOut(nginx.nginxBinaryPath); err != nil {
 			glog.Fatalf("Failed to start nginx: %v", err)
-		}
+		}		
 	} else {
 		glog.V(3).Info("Starting nginx")
 	}
@@ -250,7 +261,9 @@ func (nginx *NginxController) Start() {
 
 func createDir(path string) {
 	if err := os.Mkdir(path, os.ModeDir); err != nil {
-		glog.Fatalf("Couldn't create directory %v: %v", path, err)
+		if !os.IsExist(err) {
+			glog.Fatalf("Couldn't create directory %v: %v", path, err)
+		}
 	}
 }
 
@@ -291,7 +304,7 @@ func (nginx *NginxController) UpdateMainConfigFile(cfg *NginxMainConfig) {
 		tmpl.Execute(os.Stdout, cfg)
 	}
 
-	if !nginx.local {
+	if !nginx.local && !nginx.outOfCluster {
 		w, err := os.Create(filename)
 		if err != nil {
 			glog.Fatalf("Failed to open %v: %v", filename, err)
